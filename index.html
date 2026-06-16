@@ -148,13 +148,13 @@
 <div class="topbar">
   <div class="logo">LEO <span>TERMINAL</span></div>
   <div class="top-metrics">
-    <div class="top-metric"><span class="lbl">MNQ</span><span class="val up">21,340 +0.42%</span></div>
-    <div class="top-metric"><span class="lbl">NQ</span><span class="val up">21,350 +0.41%</span></div>
-    <div class="top-metric"><span class="lbl">QQQ</span><span class="val up">462.3 +0.38%</span></div>
-    <div class="top-metric"><span class="lbl">VIX</span><span class="val up">14.8</span></div>
-    <div class="top-metric"><span class="lbl">DXY</span><span class="val down">104.3</span></div>
-    <div class="top-metric"><span class="lbl">Bonos 10Y</span><span class="val neutral">4.22%</span></div>
-    <div style="font-size:12px;color:#64748b"><span class="dot-live"></span>Mercado abierto</div>
+    <div class="top-metric"><span class="lbl">MNQ</span><span class="val" id="price-MNQ">—</span></div>
+    <div class="top-metric"><span class="lbl">NQ</span><span class="val" id="price-NQ">—</span></div>
+    <div class="top-metric"><span class="lbl">QQQ</span><span class="val" id="price-QQQ">—</span></div>
+    <div class="top-metric"><span class="lbl">VIX</span><span class="val" id="price-VIX">—</span></div>
+    <div class="top-metric"><span class="lbl">DXY</span><span class="val" id="price-DXY">—</span></div>
+    <div class="top-metric"><span class="lbl">Bonos 10Y</span><span class="val" id="price-TNX">—</span></div>
+    <div style="font-size:12px;color:#64748b"><span class="dot-live"></span><span id="market-status">Cargando...</span></div>
   </div>
 </div>
 
@@ -183,10 +183,10 @@
       <div class="section-header">Buenos días — Centro de decisiones</div>
       <div class="section-sub">Martes 17 de junio, 2026 · NY abierto</div>
       <div class="grid-4">
-        <div class="metric"><div class="lbl">MNQ</div><div class="val up">21,340</div><div class="sub up">▲ +0.42%</div></div>
-        <div class="metric"><div class="lbl">VIX</div><div class="val up">14.8</div><div class="sub up">▼ Bajo — favorable</div></div>
-        <div class="metric"><div class="lbl">DXY</div><div class="val down">104.3</div><div class="sub down">▲ Presión al alza</div></div>
-        <div class="metric"><div class="lbl">Bonos 10Y</div><div class="val neutral">4.22%</div><div class="sub muted">Estable</div></div>
+        <div class="metric"><div class="lbl">MNQ</div><div class="val" id="m-MNQ">—</div><div class="sub" id="ms-MNQ">Cargando...</div></div>
+        <div class="metric"><div class="lbl">VIX</div><div class="val" id="m-VIX">—</div><div class="sub" id="ms-VIX">Cargando...</div></div>
+        <div class="metric"><div class="lbl">DXY</div><div class="val" id="m-DXY">—</div><div class="sub" id="ms-DXY">Cargando...</div></div>
+        <div class="metric"><div class="lbl">Bonos 10Y</div><div class="val" id="m-TNX">—</div><div class="sub" id="ms-TNX">Cargando...</div></div>
       </div>
       <div class="grid-2">
         <div class="card">
@@ -222,10 +222,10 @@
       
       <div class="section-header">Centro de trading NASDAQ</div>
       <div class="grid-4">
-        <div class="metric"><div class="lbl">MNQ</div><div class="val up">21,340</div><div class="sub up">▲ +0.42%</div></div>
-        <div class="metric"><div class="lbl">NQ</div><div class="val up">21,350</div><div class="sub up">▲ +0.41%</div></div>
-        <div class="metric"><div class="lbl">QQQ</div><div class="val up">462.3</div><div class="sub up">▲ +0.38%</div></div>
-        <div class="metric"><div class="lbl">VIX</div><div class="val up">14.8</div><div class="sub up">Bajo</div></div>
+        <div class="metric"><div class="lbl">MNQ</div><div class="val" id="t-MNQ">—</div><div class="sub" id="ts-MNQ">Cargando...</div></div>
+        <div class="metric"><div class="lbl">NQ</div><div class="val" id="t-NQ">—</div><div class="sub" id="ts-NQ">Cargando...</div></div>
+        <div class="metric"><div class="lbl">QQQ</div><div class="val" id="t-QQQ">—</div><div class="sub" id="ts-QQQ">Cargando...</div></div>
+        <div class="metric"><div class="lbl">VIX</div><div class="val" id="t-VIX">—</div><div class="sub" id="ts-VIX">Cargando...</div></div>
       </div>
       <div class="card">
         <div class="card-title">Semáforo de tendencia</div>
@@ -801,6 +801,114 @@ function simularActualizacion() {
 }
 
 renderRadar(activos);
+
+// ═══════════════════════════════════════════
+// PRECIOS EN TIEMPO REAL — Yahoo Finance
+// ═══════════════════════════════════════════
+const SYMBOLS = {
+  'QQQ':  'QQQ',
+  'VIX':  '^VIX',
+  'DXY':  'DX-Y.NYB',
+  'TNX':  '^TNX',
+  'NVDA': 'NVDA',
+  'MSFT': 'MSFT',
+  'QQQM': 'QQQM',
+  'SMH':  'SMH',
+  'VOO':  'VOO',
+  'JEPI': 'JEPI',
+  'AAPL': 'AAPL',
+  'META': 'META',
+  'GOOGL':'GOOGL',
+  'AMZN': 'AMZN',
+  'BRK.B':'BRK-B',
+  'LLY':  'LLY',
+  'MNQ':  'MNQ=F',
+  'NQ':   'NQ=F',
+};
+
+async function fetchTicker(label, symbol) {
+  const yahoo = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(symbol)}`;
+  const proxy = `https://api.allorigins.win/raw?url=${encodeURIComponent(yahoo)}`;
+  const res = await fetch(proxy);
+  const data = await res.json();
+  const q = data?.quoteResponse?.result?.[0];
+  return q ? { label, q } : null;
+}
+
+function aplicarPrecio(label, q) {
+  if (!q) return;
+  const precio = q.regularMarketPrice;
+  const pct = q.regularMarketChangePercent || 0;
+  const color = pct >= 0 ? '#1D9E75' : '#e24b4a';
+  const flecha = pct >= 0 ? '▲' : '▼';
+  const signo = pct >= 0 ? '+' : '';
+  const precioStr = precio >= 1000
+    ? precio.toLocaleString('en-US', {minimumFractionDigits:2, maximumFractionDigits:2})
+    : precio.toFixed(2);
+  const subStr = `${flecha} ${signo}${pct.toFixed(2)}%`;
+
+  // Topbar
+  const topEl = document.getElementById('price-' + label);
+  if (topEl) { topEl.textContent = `${precioStr} ${signo}${pct.toFixed(2)}%`; topEl.style.color = color; }
+
+  // Morning panel
+  const mEl = document.getElementById('m-' + label);
+  const msEl = document.getElementById('ms-' + label);
+  if (mEl) { mEl.textContent = precioStr; mEl.style.color = color; }
+  if (msEl) { msEl.textContent = subStr; msEl.style.color = color; }
+
+  // Trading panel
+  const tEl = document.getElementById('t-' + label);
+  const tsEl = document.getElementById('ts-' + label);
+  if (tEl) { tEl.textContent = precioStr; tEl.style.color = color; }
+  if (tsEl) { tsEl.textContent = subStr; tsEl.style.color = color; }
+}
+
+async function fetchPrecios() {
+  const radarMap = {};
+
+  // Fetch all tickers in parallel
+  const promesas = Object.entries(SYMBOLS).map(([label, sym]) =>
+    fetchTicker(label, sym).catch(() => null)
+  );
+  const resultados = await Promise.allSettled(promesas);
+
+  resultados.forEach(r => {
+    if (r.status === 'fulfilled' && r.value) {
+      const { label, q } = r.value;
+      aplicarPrecio(label, q);
+      radarMap[label] = q.regularMarketPrice;
+    }
+  });
+
+  // Update market status
+  const now = new Date();
+  const etHora = now.toLocaleString('en-US', {timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', hour12:false, weekday:'short'});
+  const partes = etHora.split(', ');
+  const dia = partes[0];
+  const [h, m] = partes[1].split(':').map(Number);
+  const mins = h * 60 + m;
+  const finDeSemana = dia === 'Sat' || dia === 'Sun';
+  const statusEl = document.getElementById('market-status');
+  if (statusEl) {
+    if (finDeSemana) statusEl.textContent = 'Mercado cerrado';
+    else if (mins >= 570 && mins < 960) statusEl.textContent = 'Mercado abierto';
+    else if (mins < 570) statusEl.textContent = 'Pre-market';
+    else statusEl.textContent = 'After Hours';
+  }
+
+  // Update radar with real prices
+  const activosReales = activos.map(a => {
+    const precioReal = radarMap[a.ticker];
+    return precioReal ? { ...a, precio: precioReal } : a;
+  });
+  renderRadar(activosReales);
+
+  console.log('✅ Precios actualizados:', new Date().toLocaleTimeString());
+}
+
+fetchPrecios();
+setInterval(fetchPrecios, 60000);
 </script>
 </body>
 </html>
