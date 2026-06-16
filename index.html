@@ -1,0 +1,806 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Leo Terminal</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0d0f14; color: #e2e8f0; min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* TOP BAR */
+  .topbar { background: #131720; border-bottom: 1px solid #1e2535; padding: 10px 20px; display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 16px; font-weight: 700; letter-spacing: 2px; color: #fff; }
+  .logo span { color: #1D9E75; }
+  .top-metrics { display: flex; gap: 20px; align-items: center; font-size: 13px; }
+  .top-metric { display: flex; flex-direction: column; align-items: center; }
+  .top-metric .lbl { font-size: 10px; color: #64748b; }
+  .top-metric .val { font-weight: 600; }
+  .up { color: #1D9E75; } .down { color: #e24b4a; } .neutral { color: #f0a500; }
+  .dot-live { width: 7px; height: 7px; border-radius: 50%; background: #1D9E75; display: inline-block; margin-right: 4px; animation: blink 1.5s infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+  /* LAYOUT */
+  .shell { display: flex; flex: 1; }
+  .sidebar { width: 190px; background: #131720; border-right: 1px solid #1e2535; padding: 12px 0; display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .nav-item { display: flex; align-items: center; gap: 9px; padding: 9px 16px; font-size: 13px; color: #64748b; cursor: pointer; border-left: 2px solid transparent; transition: all .15s; }
+  .nav-item:hover { background: #1a2030; color: #e2e8f0; }
+  .nav-item.active { background: #1a2030; color: #1D9E75; border-left-color: #1D9E75; font-weight: 600; }
+  .nav-icon { font-size: 15px; width: 18px; text-align: center; }
+  .main { flex: 1; overflow-y: auto; padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+
+  /* PANELS */
+  .panel { display: none; flex-direction: column; gap: 14px; }
+  .panel.active { display: flex; }
+
+  /* CARDS */
+  .card { background: #131720; border: 1px solid #1e2535; border-radius: 10px; padding: 14px 16px; }
+  .card-title { font-size: 12px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: .8px; margin-bottom: 12px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+  .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  .grid-6 { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; }
+
+  /* METRIC CARDS */
+  .metric { background: #0d0f14; border: 1px solid #1e2535; border-radius: 8px; padding: 12px 14px; }
+  .metric .lbl { font-size: 11px; color: #64748b; margin-bottom: 5px; }
+  .metric .val { font-size: 22px; font-weight: 700; }
+  .metric .sub { font-size: 11px; margin-top: 3px; }
+
+  /* SEMAPHORE */
+  .sem-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .sem { display: flex; align-items: center; gap: 7px; background: #0d0f14; border: 1px solid #1e2535; border-radius: 7px; padding: 8px 10px; font-size: 12px; }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+  .dg { background: #1D9E75; } .dy { background: #f0a500; } .dr { background: #e24b4a; }
+
+  /* TABLE ROWS */
+  .row { display: flex; justify-content: space-between; align-items: center; padding: 7px 0; border-bottom: 1px solid #1e2535; font-size: 13px; }
+  .row:last-child { border-bottom: none; }
+  .muted { color: #64748b; font-size: 12px; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; gap: 4px; padding: 3px 9px; border-radius: 99px; font-size: 11px; font-weight: 600; }
+  .bg { background: #0f3d2e; color: #1D9E75; }
+  .br { background: #3d1212; color: #e24b4a; }
+  .by { background: #3d2c00; color: #f0a500; }
+
+  /* PROGRESS BAR */
+  .bar-wrap { height: 5px; background: #1e2535; border-radius: 99px; margin: 5px 0; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 99px; }
+  .bar-green { background: #1D9E75; }
+  .bar-yellow { background: #f0a500; }
+  .bar-red { background: #e24b4a; }
+
+  /* AI BUBBLE */
+  .ai-bubble { background: #0d0f14; border: 1px solid #1D9E75; border-radius: 8px; padding: 12px 14px; font-size: 13px; line-height: 1.7; color: #e2e8f0; }
+  .ai-question { display: flex; gap: 8px; margin-top: 10px; }
+  .ai-question input { flex: 1; background: #0d0f14; border: 1px solid #1e2535; border-radius: 7px; padding: 8px 12px; font-size: 13px; color: #e2e8f0; }
+  .ai-question input:focus { outline: none; border-color: #1D9E75; }
+  .ai-question button { background: #1D9E75; border: none; border-radius: 7px; padding: 8px 14px; font-size: 13px; color: #fff; cursor: pointer; font-weight: 600; }
+  .ai-question button:hover { background: #17876a; }
+
+  /* QUICK CHIPS */
+  .chips { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 8px; }
+  .chip { background: #1a2030; border: 1px solid #1e2535; border-radius: 99px; padding: 5px 12px; font-size: 12px; color: #94a3b8; cursor: pointer; transition: all .15s; }
+  .chip:hover { border-color: #1D9E75; color: #1D9E75; }
+
+  /* SCORE CIRCLE */
+  .score-big { font-size: 48px; font-weight: 800; color: #1D9E75; text-align: center; line-height: 1; }
+  .score-sub { font-size: 13px; color: #64748b; text-align: center; margin-top: 4px; }
+
+  /* HEATMAP */
+  .heat-cell { border-radius: 6px; padding: 8px 6px; text-align: center; font-size: 11px; font-weight: 700; }
+  .hs  { background: #0f3d2e; color: #1D9E75; }
+  .hm  { background: #143d26; color: #4dd4a0; }
+  .hn  { background: #1e2535; color: #64748b; }
+  .hw  { background: #3d2c00; color: #f0a500; }
+  .hd  { background: #3d1212; color: #e24b4a; }
+
+  /* CALENDAR */
+  .cal-item { display: flex; align-items: center; gap: 12px; padding: 9px 0; border-bottom: 1px solid #1e2535; }
+  .cal-item:last-child { border-bottom: none; }
+  .impact-circle { width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 9px; font-weight: 700; flex-shrink: 0; }
+  .ic-h { background: #3d1212; color: #e24b4a; }
+  .ic-m { background: #3d2c00; color: #f0a500; }
+  .ic-l { background: #0f3d2e; color: #1D9E75; }
+  .cal-title { font-size: 13px; font-weight: 600; }
+  .cal-sub { font-size: 11px; color: #64748b; margin-top: 2px; }
+
+  /* SECTION HEADER */
+  .section-header { font-size: 18px; font-weight: 700; color: #fff; margin-bottom: 2px; }
+  .section-sub { font-size: 13px; color: #64748b; }
+
+  /* TAG */
+  .tag { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 99px; }
+  .tag-buy { background: #0f3d2e; color: #1D9E75; }
+  .tag-watch { background: #3d2c00; color: #f0a500; }
+  .tag-wait { background: #3d1212; color: #e24b4a; }
+
+  /* OPP ROW */
+  .opp-row { display: flex; align-items: center; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #1e2535; font-size: 13px; }
+  .opp-row:last-child { border-bottom: none; }
+  .opp-ticker { font-weight: 700; font-size: 14px; color: #fff; }
+  .opp-score { font-size: 13px; font-weight: 700; color: #1D9E75; min-width: 28px; text-align: right; }
+
+  /* PROJ */
+  .proj-row { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #1e2535; font-size: 13px; }
+  .proj-row:last-child { border-bottom: none; }
+  .proj-val { font-size: 16px; font-weight: 700; color: #1D9E75; }
+
+  /* ALERT ITEM */
+  .alert-item { display: flex; align-items: center; gap: 10px; background: #0d0f14; border: 1px solid #1e2535; border-radius: 7px; padding: 9px 12px; font-size: 12px; margin-bottom: 7px; }
+  .alert-item:last-child { margin-bottom: 0; }
+  .alert-icon { font-size: 16px; }
+
+  /* ENTRY GRID */
+  .entry-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 10px; }
+  .entry-item { background: #0d0f14; border: 1px solid #1e2535; border-radius: 7px; padding: 10px; text-align: center; }
+  .entry-item .el { font-size: 10px; color: #64748b; margin-bottom: 4px; }
+  .entry-item .ev { font-size: 15px; font-weight: 700; }
+
+  /* SCROLLBAR */
+  ::-webkit-scrollbar { width: 5px; } ::-webkit-scrollbar-track { background: #0d0f14; } ::-webkit-scrollbar-thumb { background: #1e2535; border-radius: 99px; }
+</style>
+</head>
+<body>
+
+<!-- TOP BAR -->
+<div class="topbar">
+  <div class="logo">LEO <span>TERMINAL</span></div>
+  <div class="top-metrics">
+    <div class="top-metric"><span class="lbl">MNQ</span><span class="val up">21,340 +0.42%</span></div>
+    <div class="top-metric"><span class="lbl">NQ</span><span class="val up">21,350 +0.41%</span></div>
+    <div class="top-metric"><span class="lbl">QQQ</span><span class="val up">462.3 +0.38%</span></div>
+    <div class="top-metric"><span class="lbl">VIX</span><span class="val up">14.8</span></div>
+    <div class="top-metric"><span class="lbl">DXY</span><span class="val down">104.3</span></div>
+    <div class="top-metric"><span class="lbl">Bonos 10Y</span><span class="val neutral">4.22%</span></div>
+    <div style="font-size:12px;color:#64748b"><span class="dot-live"></span>Mercado abierto</div>
+  </div>
+</div>
+
+<div class="shell">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="nav-item active" onclick="show('morning')"><span class="nav-icon">☀️</span> Centro decisiones</div>
+    <div class="nav-item" onclick="show('trading')"><span class="nav-icon">📊</span> Trading NASDAQ</div>
+    <div class="nav-item" onclick="show('strategy')"><span class="nav-icon">🧠</span> Motor Leo</div>
+    <div class="nav-item" onclick="show('opps')"><span class="nav-icon">🔭</span> Radar oportunidades</div>
+    <div class="nav-item" onclick="show('portfolio')"><span class="nav-icon">💼</span> Portafolio</div>
+    <div class="nav-item" onclick="show('ai')"><span class="nav-icon">🤖</span> Asesor IA</div>
+    <div class="nav-item" onclick="show('funding')"><span class="nav-icon">🏦</span> Centro fondeo</div>
+    <div class="nav-item" onclick="show('risk')"><span class="nav-icon">🛡️</span> Gestión riesgo</div>
+    <div class="nav-item" onclick="show('calendar')"><span class="nav-icon">📅</span> Calendario</div>
+    <div class="nav-item" onclick="show('heatmap')"><span class="nav-icon">🌡️</span> Heatmap</div>
+    <div class="nav-item" onclick="show('goals')"><span class="nav-icon">🎯</span> Objetivos</div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+
+    <!-- MORNING -->
+    <div class="panel active" id="panel-morning">
+      <div class="section-header">Buenos días — Centro de decisiones</div>
+      <div class="section-sub">Martes 17 de junio, 2026 · NY abierto</div>
+      <div class="grid-4">
+        <div class="metric"><div class="lbl">MNQ</div><div class="val up">21,340</div><div class="sub up">▲ +0.42%</div></div>
+        <div class="metric"><div class="lbl">VIX</div><div class="val up">14.8</div><div class="sub up">▼ Bajo — favorable</div></div>
+        <div class="metric"><div class="lbl">DXY</div><div class="val down">104.3</div><div class="sub down">▲ Presión al alza</div></div>
+        <div class="metric"><div class="lbl">Bonos 10Y</div><div class="val neutral">4.22%</div><div class="sub muted">Estable</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Noticias clave</div>
+          <div class="row">Fed mantiene tasas sin cambios <span class="badge bg">Positivo</span></div>
+          <div class="row">CPI mañana 8:30am ET <span class="badge by">Riesgo</span></div>
+          <div class="row">NVDA earnings +12% AH <span class="badge bg">Fuerza</span></div>
+          <div class="row">Powell habla jueves 2pm <span class="badge by">Vigilar</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Setups disponibles</div>
+          <div class="row">MNQ — Setup Leo activo <span class="badge bg">Score 82</span></div>
+          <div class="row">QQQ pullback sobre EMA9 <span class="badge bg">Válido</span></div>
+          <div class="row">SMH posible reversión <span class="badge by">Vigilar</span></div>
+          <div class="row">NQ breakout 21,300 <span class="badge bg">Confirmado</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Riesgo recomendado hoy</div>
+          <div class="row">Contratos máximos <strong>5 MNQ</strong></div>
+          <div class="row">Riesgo por trade máx. <strong>$500</strong></div>
+          <div class="row">Riesgo diario máx. <strong>$1,000</strong></div>
+          <div class="row">Balance actual <span class="badge bg">$51,789</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Prioridad del día</div>
+          <div class="ai-bubble">Espera confirmación en apertura NY. Setup MNQ activo en zona 21,280–21,340. Evita operar antes del CPI de mañana. Revisa NVDA para posible entrada de largo plazo en la apertura.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TRADING -->
+    <div class="panel" id="panel-trading">
+      
+      <div class="section-header">Centro de trading NASDAQ</div>
+      <div class="grid-4">
+        <div class="metric"><div class="lbl">MNQ</div><div class="val up">21,340</div><div class="sub up">▲ +0.42%</div></div>
+        <div class="metric"><div class="lbl">NQ</div><div class="val up">21,350</div><div class="sub up">▲ +0.41%</div></div>
+        <div class="metric"><div class="lbl">QQQ</div><div class="val up">462.3</div><div class="sub up">▲ +0.38%</div></div>
+        <div class="metric"><div class="lbl">VIX</div><div class="val up">14.8</div><div class="sub up">Bajo</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Semáforo de tendencia</div>
+        <div class="sem-grid">
+          <div class="sem"><span class="dot dg"></span>1 min — Alcista</div>
+          <div class="sem"><span class="dot dg"></span>5 min — Alcista</div>
+          <div class="sem"><span class="dot dy"></span>15 min — Neutral</div>
+          <div class="sem"><span class="dot dg"></span>1 Hora — Alcista</div>
+          <div class="sem"><span class="dot dg"></span>4 Horas — Alcista</div>
+          <div class="sem"><span class="dot dg"></span>Diario — Alcista</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Indicadores activos</div>
+          <div class="row">VWAP <span class="up">Precio por encima ✓</span></div>
+          <div class="row">EMA 9 / EMA 20 <span class="up">Boca abierta ✓</span></div>
+          <div class="row">EMA 50 <span class="up">Soporte activo ✓</span></div>
+          <div class="row">EMA 200 <span class="up">Tendencia alcista ✓</span></div>
+          <div class="row">Volumen <span class="up">Sobre la media ✓</span></div>
+          <div class="row">Delta <span class="up">Comprador +1,240</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Patrones detectados</div>
+          <div class="row">Trend Continuation <span class="badge bg">Activo</span></div>
+          <div class="row">FVG 21,180–21,210 <span class="badge by">Pendiente</span></div>
+          <div class="row">Order Block 21,050 <span class="badge by">Soporte</span></div>
+          <div class="row">Breakout 21,300 <span class="badge bg">Confirmado</span></div>
+          <div class="row">Liquidity Sweep <span class="badge br">No detectado</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- STRATEGY -->
+    <div class="panel" id="panel-strategy">
+      <div class="section-header">Motor de estrategia Leo</div>
+      <div class="grid-2">
+        <div class="card" style="text-align:center;padding:24px">
+          <div class="score-big">82</div>
+          <div class="score-sub">Calidad del setup</div>
+          <div style="margin-top:12px"><span class="badge bg" style="font-size:13px;padding:5px 14px">Setup válido ✓</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Condiciones analizadas</div>
+          <div class="row">Regla de las 3 velas <span class="up">✓ Cumple</span></div>
+          <div class="row">Boca de EMAs <span class="up">✓ Abierta</span></div>
+          <div class="row">Precio sobre VWAP <span class="up">✓ Confirmado</span></div>
+          <div class="row">Tendencia superior alcista <span class="up">✓ Confirmado</span></div>
+          <div class="row">Confirmación de volumen <span class="neutral">⚠ Parcial</span></div>
+          <div class="row">Separación de EMAs <span class="up">✓ Correcta</span></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Parámetros del trade — MNQ</div>
+        <div class="entry-grid">
+          <div class="entry-item"><div class="el">Entrada ideal</div><div class="ev" style="color:#e2e8f0">21,340</div></div>
+          <div class="entry-item"><div class="el">Stop Loss</div><div class="ev down">21,290</div></div>
+          <div class="entry-item"><div class="el">Take Profit 1</div><div class="ev up">21,390</div></div>
+          <div class="entry-item"><div class="el">Take Profit 2</div><div class="ev up">21,440</div></div>
+          <div class="entry-item"><div class="el">Riesgo / Beneficio</div><div class="ev" style="color:#e2e8f0">1 : 2</div></div>
+          <div class="entry-item"><div class="el">Prob. histórica</div><div class="ev up">68%</div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- OPPORTUNITIES -->
+    <div class="panel" id="panel-opps">
+      <div class="section-header">Radar de oportunidades</div>
+
+      <!-- ALERTAS ACTIVAS -->
+      <div id="alertas-container"></div>
+
+      <!-- LEYENDA EMAs -->
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:2px">
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#e2e8f0"><div style="width:10px;height:10px;border-radius:50%;background:#c0392b"></div>Precio tocando EMA — Zona de compra activa</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#e2e8f0"><div style="width:10px;height:10px;border-radius:50%;background:#e67e22"></div>Acercándose a EMA — Prepararse</div>
+        <div style="display:flex;align-items:center;gap:5px;font-size:11px;color:#e2e8f0"><div style="width:10px;height:10px;border-radius:50%;background:#1D9E75"></div>Sobre EMAs — Tendencia sana</div>
+      </div>
+
+      <!-- TABLA RADAR -->
+      <div class="card">
+        <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+          <span>Tu portafolio + radar IA — empresas +$100B market cap</span>
+          <button onclick="simularActualizacion()" style="font-size:11px;padding:4px 10px;background:#1a2030;border:1px solid #1e2535;border-radius:6px;color:#1D9E75;cursor:pointer">↻ Simular actualización</button>
+        </div>
+        <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px">
+          <thead>
+            <tr style="border-bottom:1px solid #1e2535;color:#64748b;font-size:11px">
+              <td style="padding:6px 4px">Ticker</td>
+              <td style="padding:6px 4px">Empresa</td>
+              <td style="padding:6px 4px">Market Cap</td>
+              <td style="padding:6px 4px">Precio</td>
+              <td style="padding:6px 4px">EMA 50</td>
+              <td style="padding:6px 4px">EMA 200</td>
+              <td style="padding:6px 4px">% vs EMA 50</td>
+              <td style="padding:6px 4px">Señal</td>
+              <td style="padding:6px 4px">Acción</td>
+            </tr>
+          </thead>
+          <tbody id="radar-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+
+      <!-- IA RECOMIENDA -->
+      <div class="card">
+        <div class="card-title">IA recomienda — empresas sólidas para vigilar esta semana</div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">AAPL</span> <span class="muted">— $3.4T · Consumer Tech</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">EMA 200 en $185</span>
+            <span class="tag tag-watch">Vigilar zona $190</span>
+          </div>
+        </div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">META</span> <span class="muted">— $1.6T · IA / Social</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">Pullback EMA 50</span>
+            <span class="tag tag-buy">Compra moderada</span>
+          </div>
+        </div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">GOOGL</span> <span class="muted">— $2.1T · IA / Cloud</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">Consolidando</span>
+            <span class="tag tag-watch">Vigilar</span>
+          </div>
+        </div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">AMZN</span> <span class="muted">— $2.2T · Cloud / E-commerce</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">Sobre EMA 50</span>
+            <span class="tag tag-buy">Compra moderada</span>
+          </div>
+        </div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">BRK.B</span> <span class="muted">— $1.1T · Diversificado</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">EMA 50 — soporte</span>
+            <span class="tag tag-buy">Compra fuerte</span>
+          </div>
+        </div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">JPM</span> <span class="muted">— $720B · Financiero</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">Tendencia alcista</span>
+            <span class="tag tag-watch">Vigilar corrección</span>
+          </div>
+        </div>
+        <div class="opp-row">
+          <div><span class="opp-ticker">LLY</span> <span class="muted">— $800B · Pharma / GLP-1</span></div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <span style="font-size:11px;color:#64748b">Cerca EMA 200</span>
+            <span class="tag tag-buy">Compra fuerte</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="card" style="border-left:3px solid #1D9E75;border-radius:0 10px 10px 0">
+        <div class="card-title" style="color:#1D9E75">Criterios de selección IA — empresas sólidas</div>
+        <div style="font-size:12px;color:#e2e8f0;line-height:1.8">
+          ✅ Market Cap superior a $100B · ✅ Crecimiento EPS positivo · ✅ ROE mayor a 15% · ✅ Flujo de caja positivo · ✅ Líder en su sector · ✅ Precio cerca de EMA 50 o EMA 200 (zona de compra institucional)
+        </div>
+      </div>
+
+    </div>
+
+    <!-- PORTFOLIO -->
+    <div class="panel" id="panel-portfolio">
+      <div class="section-header">Portafolio inteligente</div>
+      <div class="grid-4">
+        <div class="metric"><div class="lbl">Total invertido</div><div class="val" style="color:#fff">$4,569</div><div class="sub up">▲ +$410 all time (12.7%)</div></div>
+        <div class="metric"><div class="lbl">Acorns</div><div class="val up">$3,640</div><div class="sub muted">VOO · IJH · IJR · IXUS · NVDA · JEPI</div></div>
+        <div class="metric"><div class="lbl">Robinhood</div><div class="val up">$929</div><div class="sub muted">MSFT · QQQM · SMH</div></div>
+        <div class="metric"><div class="lbl">Aporte semanal</div><div class="val up">$50</div><div class="sub muted">Automático — martes</div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Distribución real de tu portafolio</div>
+          <div class="row">VOO <span class="muted">Large Cap</span><span class="up">39% — $1,783</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:39%"></div></div>
+          <div class="row">IXUS <span class="muted">Internacional</span><span class="muted">20.9% — $953</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:20.9%"></div></div>
+          <div class="row">SMH <span class="muted">Semiconductores</span><span class="up">14.1% — $645</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:14.1%"></div></div>
+          <div class="row">QQQM <span class="muted">NASDAQ</span><span class="up">13.4% — $611</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:13.4%"></div></div>
+          <div class="row">MSFT <span class="muted">Tech</span><span class="muted">8.6% — $393</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:8.6%"></div></div>
+          <div class="row">JEPI <span class="muted">Dividendos</span><span class="muted">4.8% — $218</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:4.8%"></div></div>
+          <div class="row">NVDA <span class="muted">IA</span><span class="muted">3.9% — $177</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-green" style="width:3.9%"></div></div>
+          <div class="row">IJH / IJR <span class="muted">Mid/Small Cap</span><span class="muted">11% — $507</span></div>
+          <div class="bar-wrap"><div class="bar-fill bar-yellow" style="width:11%"></div></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Análisis y recomendaciones</div>
+          <div class="alert-item"><span class="alert-icon" style="color:#1D9E75">✅</span><span><strong>Portafolio bien diversificado.</strong> VOO como base sólida al 39% es correcto.</span></div>
+          <div class="alert-item"><span class="alert-icon">⚠️</span><span><strong>IXUS al 20.9%</strong> — exposición internacional alta. Monitorea fortaleza del dólar (DXY).</span></div>
+          <div class="alert-item"><span class="alert-icon" style="color:#1D9E75">✅</span><span><strong>SMH + QQQM + MSFT</strong> — buena combinación tech sin sobreconcentrar en una sola acción.</span></div>
+          <div class="alert-item"><span class="alert-icon">💡</span><span><strong>Considera aumentar JEPI o SCHD</strong> — generar más flujo de dividendos mensuales.</span></div>
+          <div class="alert-item"><span class="alert-icon">💡</span><span><strong>$50/semana automático</strong> en Acorns es excelente hábito. No lo canceles.</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- AI ADVISOR -->
+    <div class="panel" id="panel-ai">
+      <div class="section-header">Asesor de inversión IA</div>
+      <div class="card">
+        <div class="card-title">Consulta al asesor</div>
+        <div class="ai-bubble" id="ai-response">Hola. Soy tu asesor IA. Dado tu perfil moderado-agresivo y horizonte de 10 años, con $500 hoy recomendaría: 60% QQQM ($300) por exposición diversificada al NASDAQ, 25% SCHD ($125) para flujo de dividendos y estabilidad, 15% efectivo en espera de corrección en NVDA. Tu portafolio tiene sobreconcentración en tecnología — no agregues más posiciones del sector hasta que NVDA baje del 20%.</div>
+        <div class="ai-question">
+          <input type="text" id="ai-input" placeholder="Pregunta algo: ¿Dónde invierto $500 hoy?" onkeydown="if(event.key==='Enter')askAI()">
+          <button onclick="askAI()">Preguntar</button>
+        </div>
+        <div class="chips">
+          <div class="chip" onclick="setQ('¿Dónde invierto $500 hoy?')">¿Dónde invierto $500?</div>
+          <div class="chip" onclick="setQ('¿Estoy demasiado concentrado en tecnología?')">¿Concentrado en tech?</div>
+          <div class="chip" onclick="setQ('¿Qué haría Warren Buffett con este portafolio?')">¿Qué haría Buffett?</div>
+          <div class="chip" onclick="setQ('¿Qué activo tiene mejor riesgo-beneficio ahora?')">Mejor riesgo-beneficio</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FUNDING -->
+    <div class="panel" id="panel-funding">
+      <div class="section-header">Centro de fondeo</div>
+      <div class="grid-4">
+        <div class="metric"><div class="lbl">Cuenta activa</div><div class="val" style="color:#fff;font-size:18px">$50K</div><div class="sub muted">Cuenta fondeo</div></div>
+        <div class="metric"><div class="lbl">Balance actual</div><div class="val up">$51,789</div><div class="sub up">+$1,789 total</div></div>
+        <div class="metric"><div class="lbl">Min balance tocado</div><div class="val neutral">$49,520</div><div class="sub neutral">EOD más bajo</div></div>
+        <div class="metric"><div class="lbl">PnL hoy</div><div class="val up">+$654</div><div class="sub up">Buen día ✓</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Progreso de evaluación</div>
+        <div class="row">Ganancia acumulada <strong class="up">$1,789 / $3,000</strong></div>
+        <div class="bar-wrap"><div class="bar-fill bar-green" style="width:59.6%"></div></div>
+        <div class="row" style="margin-top:10px">Drawdown usado (min bal $49,520) <strong class="neutral">$480 / $2,500</strong></div>
+        <div class="bar-wrap"><div class="bar-fill bar-yellow" style="width:19.2%"></div></div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Simulador de riesgo</div>
+          <div class="row">Contratos permitidos <strong>5 MNQ</strong></div>
+          <div class="row">Riesgo por trade máx. <strong>$500</strong></div>
+          <div class="row">Riesgo diario máx. <strong>$1,000</strong></div>
+          <div class="row">Días operados <strong>12 de 30</strong></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Otras cuentas</div>
+          <div class="row">25K Take Profit <span class="badge bg">Pasada ✓</span></div>
+          <div class="row">50K Take Profit <span class="badge by">En evaluación</span></div>
+          <div class="row">75K Take Profit <span class="badge br">No iniciada</span></div>
+          <div class="row">100K Take Profit <span class="badge br">No iniciada</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RISK -->
+    <div class="panel" id="panel-risk">
+      <div class="section-header">Gestión de riesgo</div>
+      <div class="grid-4">
+        <div class="metric"><div class="lbl">PnL hoy</div><div class="val up">+$654</div><div class="sub up">Día ganador ✓</div></div>
+        <div class="metric"><div class="lbl">PnL semana</div><div class="val up">+$1,096</div><div class="sub up">Jun 12 + hoy</div></div>
+        <div class="metric"><div class="lbl">Drawdown disponible</div><div class="val up">$2,020</div><div class="sub up">Margen seguro</div></div>
+        <div class="metric"><div class="lbl">Bloqueador</div><div class="val up" style="font-size:15px">Activo</div><div class="sub muted">Límite -$1,000/día</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Alertas activas</div>
+        <div class="alert-item"><span class="alert-icon">⚠️</span><span>Drawdown 50% del límite diario alcanzado — considera reducir tamaño de posición.</span></div>
+        <div class="alert-item"><span class="alert-icon" style="color:#1D9E75">✅</span><span>Sin exceso de contratos — dentro de parámetros de la cuenta de fondeo.</span></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Historial de la semana</div>
+        <div class="row">Jun 12 <span class="down">-$385.50</span></div>
+        <div class="row">Jun 11 <span class="up">+$6.50</span></div>
+        <div class="row">Jun 9 <span class="up">+$396.00</span></div>
+        <div class="row">Jun 5 <span class="up">+$465.00</span></div>
+        <div class="row">Jun 4 <span class="up">+$482.00</span></div>
+        <div class="row">Jun 16 — hoy <span class="up">+$654.00</span></div>
+        <div class="row" style="border-top:1px solid #1e2535;margin-top:4px;padding-top:8px">Balance actual <strong class="up">$51,789</strong></div>
+      </div>
+    </div>
+
+    <!-- CALENDAR -->
+    <div class="panel" id="panel-calendar">
+      <div class="section-header">Calendario económico</div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:4px">
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#e2e8f0">
+          <div style="width:14px;height:14px;border-radius:3px;background:#c0392b;flex-shrink:0"></div>
+          <span><strong>Rojo — NO OPERAR.</strong> Volatilidad extrema. Cierra posiciones antes.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#e2e8f0">
+          <div style="width:14px;height:14px;border-radius:3px;background:#e67e22;flex-shrink:0"></div>
+          <span><strong>Naranja — Precaución.</strong> Reduce tamaño o espera confirmación.</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;font-size:12px;color:#e2e8f0">
+          <div style="width:14px;height:14px;border-radius:3px;background:#f1c40f;flex-shrink:0"></div>
+          <span><strong>Amarillo — Leve.</strong> Puedes operar con precaución.</span>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Esta semana — Semana del 16 de junio 2026</div>
+
+        <!-- LUNES 16 -->
+        <div style="font-size:11px;font-weight:700;color:#64748b;padding:8px 0 4px;letter-spacing:.8px">LUNES 16 JUN</div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#f1c40f;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">Empire State Manufacturing</div>
+            <div class="cal-sub">8:30am ET · USD · Impacto leve en mercados · Puedes operar</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#f1c40f;min-width:60px;text-align:right">AMARILLO</div>
+        </div>
+
+        <!-- MARTES 17 -->
+        <div style="font-size:11px;font-weight:700;color:#64748b;padding:8px 0 4px;letter-spacing:.8px">MARTES 17 JUN</div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#e67e22;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">Retail Sales</div>
+            <div class="cal-sub">8:30am ET · USD · Mueve al MNQ · Espera 5 min post-dato</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#e67e22;min-width:60px;text-align:right">NARANJA</div>
+        </div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#e67e22;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">Industrial Production</div>
+            <div class="cal-sub">9:15am ET · USD · Moderado · Reduce tamaño</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#e67e22;min-width:60px;text-align:right">NARANJA</div>
+        </div>
+
+        <!-- MIERCOLES 18 -->
+        <div style="font-size:11px;font-weight:700;color:#64748b;padding:8px 0 4px;letter-spacing:.8px">MIÉRCOLES 18 JUN</div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#f1c40f;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">MBA Mortgage Applications</div>
+            <div class="cal-sub">7:00am ET · USD · Impacto mínimo en NASDAQ</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#f1c40f;min-width:60px;text-align:right">AMARILLO</div>
+        </div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#c0392b;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">⛔ FOMC Statement + Proyecciones</div>
+            <div class="cal-sub">2:00pm ET · Decisión de tasas · NO OPERAR desde 1:45pm hasta 2:30pm mínimo</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#c0392b;min-width:60px;text-align:right">ROJO</div>
+        </div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#c0392b;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">⛔ Conferencia de prensa Powell</div>
+            <div class="cal-sub">2:30pm ET · Extremadamente volátil · NO OPERAR hasta cierre de sesión</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#c0392b;min-width:60px;text-align:right">ROJO</div>
+        </div>
+
+        <!-- JUEVES 19 -->
+        <div style="font-size:11px;font-weight:700;color:#64748b;padding:8px 0 4px;letter-spacing:.8px">JUEVES 19 JUN — JUNETEENTH (Mercado cerrado)</div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#1e2535;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title" style="color:#64748b">Mercado USA cerrado — Feriado federal</div>
+            <div class="cal-sub">NYSE, CME y NASDAQ cerrados. No hay sesión de trading.</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#64748b;min-width:60px;text-align:right">CERRADO</div>
+        </div>
+
+        <!-- VIERNES 20 -->
+        <div style="font-size:11px;font-weight:700;color:#64748b;padding:8px 0 4px;letter-spacing:.8px">VIERNES 20 JUN</div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#c0392b;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">⛔ Triple Witching — Vencimiento opciones</div>
+            <div class="cal-sub">Todo el día · Volatilidad anormal · Evita operar especialmente en el cierre 3-4pm ET</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#c0392b;min-width:60px;text-align:right">ROJO</div>
+        </div>
+        <div class="cal-item">
+          <div style="width:12px;height:44px;border-radius:3px;background:#e67e22;flex-shrink:0"></div>
+          <div style="flex:1">
+            <div class="cal-title">Existing Home Sales</div>
+            <div class="cal-sub">10:00am ET · USD · Moderado · Reduce tamaño si tienes posición abierta</div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:#e67e22;min-width:60px;text-align:right">NARANJA</div>
+        </div>
+
+      </div>
+
+      <div class="card" style="border-left:3px solid #c0392b;border-radius:0 10px 10px 0">
+        <div class="card-title" style="color:#c0392b">Regla de oro para tu cuenta de fondeo</div>
+        <div style="font-size:13px;color:#e2e8f0;line-height:1.7">
+          Cierra todas las posiciones <strong>5 minutos antes</strong> de cualquier noticia roja. No entres hasta que el precio muestre dirección clara (mínimo 2-3 minutos después). Una noticia roja puede borrar semanas de trabajo en segundos.
+        </div>
+      </div>
+    </div>
+
+    <!-- HEATMAP -->
+    <div class="panel" id="panel-heatmap">
+      <div class="section-header">Heatmap institucional</div>
+      <div class="card">
+        <div class="card-title">NASDAQ — Fuerza por acción</div>
+        <div class="grid-6" style="margin-bottom:8px">
+          <div class="heat-cell hs">NVDA<br>+2.1%</div>
+          <div class="heat-cell hs">META<br>+1.8%</div>
+          <div class="heat-cell hm">MSFT<br>+0.9%</div>
+          <div class="heat-cell hm">AAPL<br>+0.7%</div>
+          <div class="heat-cell hm">GOOGL<br>+0.6%</div>
+          <div class="heat-cell hm">AMD<br>+0.5%</div>
+          <div class="heat-cell hn">AMZN<br>0.0%</div>
+          <div class="heat-cell hn">TSLA<br>-0.1%</div>
+          <div class="heat-cell hw">INTC<br>-0.8%</div>
+          <div class="heat-cell hw">QCOM<br>-1.1%</div>
+          <div class="heat-cell hd">XLE<br>-2.3%</div>
+          <div class="heat-cell hd">XLU<br>-1.9%</div>
+        </div>
+      </div>
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-title">Rotación sectorial</div>
+          <div class="row">IA / Semiconductores <span class="up">Entrando ↑</span></div>
+          <div class="row">Software nube <span class="up">Fuerte ↑</span></div>
+          <div class="row">Energía <span class="neutral">Saliendo →</span></div>
+          <div class="row">Utilities <span class="down">Débil ↓</span></div>
+          <div class="row">Financiero <span class="neutral">Neutral →</span></div>
+        </div>
+        <div class="card">
+          <div class="card-title">Flujo institucional</div>
+          <div class="row">NVDA <span class="up">Acumulación ↑</span></div>
+          <div class="row">SMH <span class="up">Compra neta ↑</span></div>
+          <div class="row">QQQ <span class="up">Inflows altos ↑</span></div>
+          <div class="row">XLE <span class="down">Distribución ↓</span></div>
+          <div class="row">XLU <span class="down">Salidas ↓</span></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GOALS -->
+    <div class="panel" id="panel-goals">
+      <div class="section-header">Panel de objetivos</div>
+      <div class="grid-3">
+        <div class="metric"><div class="lbl">Portafolio inversiones</div><div class="val up">$4,569</div><div class="sub up">+$410 all time (12.7%)</div></div>
+        <div class="metric"><div class="lbl">Cuenta fondeo</div><div class="val up">$51,789</div><div class="sub up">+$1,789 sobre $50K</div></div>
+        <div class="metric"><div class="lbl">Aporte automático</div><div class="val up">$50 / sem</div><div class="sub muted">$200/mes a Acorns</div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Progreso de metas</div>
+        <div class="row">Meta mensual junio <span class="up">78%</span></div>
+        <div class="bar-wrap"><div class="bar-fill bar-green" style="width:78%"></div></div>
+        <div class="row" style="margin-top:8px">Meta anual 2026 <span class="neutral">54%</span></div>
+        <div class="bar-wrap"><div class="bar-fill bar-yellow" style="width:54%"></div></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Proyección del portafolio (tasa 12% anual)</div>
+        <div class="proj-row"><span>Hoy</span><span class="proj-val">$4,569</span><span class="muted">Base actual</span></div>
+        <div class="proj-row"><span>1 año <span class="muted">(+$200/mes)</span></span><span class="proj-val">$7,600</span><span class="muted up">+66%</span></div>
+        <div class="proj-row"><span>5 años <span class="muted">(+$200/mes)</span></span><span class="proj-val">$24,800</span><span class="muted up">+443%</span></div>
+        <div class="proj-row"><span>10 años <span class="muted">(+$200/mes)</span></span><span class="proj-val">$62,000</span><span class="muted up">+1,257%</span></div>
+        <div class="proj-row"><span>15 años <span class="muted">(+$200/mes)</span></span><span class="proj-val">$130,000</span><span class="muted up">+2,745%</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+function show(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + id).classList.add('active');
+  event.currentTarget.classList.add('active');
+}
+function setQ(q) {
+  document.getElementById('ai-input').value = q;
+}
+function askAI() {
+  const q = document.getElementById('ai-input').value.trim();
+  if (!q) return;
+  const respuestas = {
+    default: 'Para responder con datos reales, en el próximo paso conectaremos esta sección a la API de Claude. Por ahora puedes anotar tus preguntas aquí y el asesor responderá cuando esté conectado.'
+  };
+  document.getElementById('ai-response').textContent = respuestas.default;
+  document.getElementById('ai-input').value = '';
+}
+
+// RADAR DE OPORTUNIDADES
+const activos = [
+  { ticker:'NVDA', nombre:'NVIDIA Corp', cap:'$3.3T', precio:135.20, ema50:128.40, ema200:112.80, enPortafolio:true },
+  { ticker:'MSFT', nombre:'Microsoft Corp', cap:'$3.1T', precio:380.50, ema50:375.20, ema200:350.10, enPortafolio:true },
+  { ticker:'QQQM', nombre:'NASDAQ ETF', cap:'ETF', precio:462.30, ema50:448.60, ema200:420.30, enPortafolio:true },
+  { ticker:'SMH',  nombre:'Semiconductores ETF', cap:'ETF', precio:245.80, ema50:238.40, ema200:210.60, enPortafolio:true },
+  { ticker:'VOO',  nombre:'S&P 500 ETF', cap:'ETF', precio:542.10, ema50:530.80, ema200:498.20, enPortafolio:true },
+  { ticker:'JEPI', nombre:'JPM Premium Income ETF', cap:'ETF', precio:59.40, ema50:58.20, ema200:56.10, enPortafolio:true },
+  { ticker:'AAPL', nombre:'Apple Inc', cap:'$3.4T', precio:192.30, ema50:194.80, ema200:185.40, enPortafolio:false },
+  { ticker:'META', nombre:'Meta Platforms', cap:'$1.6T', precio:558.20, ema50:554.30, ema200:498.70, enPortafolio:false },
+  { ticker:'GOOGL',nombre:'Alphabet Inc', cap:'$2.1T', precio:178.40, ema50:172.60, ema200:158.90, enPortafolio:false },
+  { ticker:'AMZN', nombre:'Amazon.com', cap:'$2.2T', precio:198.60, ema50:190.40, ema200:172.30, enPortafolio:false },
+  { ticker:'BRK.B',nombre:'Berkshire Hathaway', cap:'$1.1T', precio:465.20, ema50:463.80, ema200:438.90, enPortafolio:false },
+  { ticker:'LLY',  nombre:'Eli Lilly', cap:'$800B', precio:812.40, ema50:840.20, ema200:798.60, enPortafolio:false },
+];
+
+function calcularSenal(precio, ema50, ema200) {
+  const pctEma50 = ((precio - ema50) / ema50) * 100;
+  const sobreEma200 = precio > ema200;
+  if (precio <= ema50 * 1.005 && precio >= ema50 * 0.995) return { tipo:'TOCANDO EMA 50', color:'#c0392b', accion:'🔔 COMPRA ACTIVA', bgAccion:'#3d1212', colorAccion:'#e24b4a' };
+  if (precio <= ema200 * 1.005 && precio >= ema200 * 0.995) return { tipo:'TOCANDO EMA 200', color:'#c0392b', accion:'🔔 COMPRA FUERTE', bgAccion:'#3d1212', colorAccion:'#e24b4a' };
+  if (pctEma50 > 0 && pctEma50 < 3) return { tipo:'SOBRE EMA 50', color:'#1D9E75', accion:'✅ Tendencia sana', bgAccion:'#0f3d2e', colorAccion:'#1D9E75' };
+  if (pctEma50 < 0 && pctEma50 > -5) return { tipo:'ACERCÁNDOSE EMA 50', color:'#e67e22', accion:'⚠️ Prepararse', bgAccion:'#3d2c00', colorAccion:'#e67e22' };
+  if (pctEma50 < -5) return { tipo:'BAJO EMA 50', color:'#e67e22', accion:'👀 Vigilar EMA 200', bgAccion:'#3d2c00', colorAccion:'#e67e22' };
+  if (pctEma50 > 5) return { tipo:'EXTENDIDO', color:'#64748b', accion:'⏳ Esperar pullback', bgAccion:'#1a2030', colorAccion:'#64748b' };
+  return { tipo:'NEUTRAL', color:'#64748b', accion:'—', bgAccion:'#1a2030', colorAccion:'#64748b' };
+}
+
+function renderRadar(datos) {
+  const tbody = document.getElementById('radar-tbody');
+  if (!tbody) return;
+  const alertas = [];
+  tbody.innerHTML = datos.map(a => {
+    const senal = calcularSenal(a.precio, a.ema50, a.ema200);
+    const pctEma50 = ((a.precio - a.ema50) / a.ema50 * 100).toFixed(1);
+    const enPortafolioBadge = a.enPortafolio ? '<span style="font-size:9px;background:#0f3d2e;color:#1D9E75;padding:1px 5px;border-radius:99px;margin-left:4px">mío</span>' : '';
+    if (senal.tipo.includes('TOCANDO') || senal.tipo.includes('ACERCÁNDOSE')) {
+      alertas.push({ ticker: a.ticker, senal: senal });
+    }
+    return `<tr style="border-bottom:1px solid #1e2535">
+      <td style="padding:8px 4px;font-weight:700;color:#fff">${a.ticker}${enPortafolioBadge}</td>
+      <td style="padding:8px 4px;color:#94a3b8;font-size:11px">${a.nombre}</td>
+      <td style="padding:8px 4px;color:#64748b;font-size:11px">${a.cap}</td>
+      <td style="padding:8px 4px;font-weight:600">$${a.precio.toFixed(2)}</td>
+      <td style="padding:8px 4px;color:#64748b">$${a.ema50.toFixed(2)}</td>
+      <td style="padding:8px 4px;color:#64748b">$${a.ema200.toFixed(2)}</td>
+      <td style="padding:8px 4px;font-weight:600;color:${parseFloat(pctEma50) < 0 ? '#e67e22' : '#1D9E75'}">${pctEma50 > 0 ? '+' : ''}${pctEma50}%</td>
+      <td style="padding:8px 4px"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${senal.color};margin-right:5px"></span><span style="font-size:11px;color:${senal.color}">${senal.tipo}</span></td>
+      <td style="padding:8px 4px"><span style="font-size:11px;background:${senal.bgAccion};color:${senal.colorAccion};padding:3px 7px;border-radius:5px;white-space:nowrap">${senal.accion}</span></td>
+    </tr>`;
+  }).join('');
+  renderAlertas(alertas);
+}
+
+function renderAlertas(alertas) {
+  const container = document.getElementById('alertas-container');
+  if (!container) return;
+  if (alertas.length === 0) {
+    container.innerHTML = '<div style="background:#0f3d2e;border:1px solid #1D9E75;border-radius:10px;padding:12px 16px;font-size:13px;color:#1D9E75;margin-bottom:4px">✅ Sin alertas activas ahora mismo. Todos los activos están en zonas neutras.</div>';
+    return;
+  }
+  container.innerHTML = '<div style="background:#1a2030;border:1px solid #1e2535;border-radius:10px;padding:12px 16px;margin-bottom:4px">' +
+    '<div style="font-size:12px;font-weight:700;color:#e2e8f0;margin-bottom:8px;letter-spacing:.5px">🔔 ALERTAS ACTIVAS</div>' +
+    alertas.map(a => `<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid #1e2535">
+      <div style="width:10px;height:10px;border-radius:50%;background:${a.senal.color};flex-shrink:0;animation:blink 1.5s infinite"></div>
+      <span style="font-weight:700;color:#fff;font-size:13px">${a.ticker}</span>
+      <span style="font-size:12px;color:${a.senal.color}">${a.senal.tipo}</span>
+      <span style="margin-left:auto;font-size:12px;background:${a.senal.bgAccion};color:${a.senal.colorAccion};padding:3px 9px;border-radius:5px">${a.senal.accion}</span>
+    </div>`).join('') +
+    '</div>';
+}
+
+function simularActualizacion() {
+  const modificados = activos.map(a => ({
+    ...a,
+    precio: a.precio * (1 + (Math.random() * 0.06 - 0.03))
+  }));
+  renderRadar(modificados);
+}
+
+renderRadar(activos);
+</script>
+</body>
+</html>
